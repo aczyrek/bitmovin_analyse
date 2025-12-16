@@ -1,0 +1,26 @@
+name: Monthly Bitmovin Report
+
+on:
+  schedule:
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      BITMOVIN_API_KEY: ${{ secrets.BITMOVIN_API_KEY }}
+      BITMOVIN_ORG_ID: ${{ secrets.BITMOVIN_ORG_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: pip install requests pandas
+      - run: python bitmovin_report.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bitmovin-transcoding-report
+          path: bitmovin_transcoding_report_*.csv
+          if-no-files-found: error

@@ -1,21 +1,21 @@
 import requests
 import pandas as pd
 import json
-import datetime 
+import datetime
+import os
 
-# =======================================================
-# KONFIGURACJA (PROSZĘ ZMIENIĆ)
-# =======================================================
-# ❗ 1. Wymaga API Key - proszę podstawić swój klucz z Bitmovin
-API_KEY = "9d70b761-68a1-45ef-867f-4891028e824c"
 BASE_URL = "https://api.bitmovin.com/v1/encoding/encodings"
-OUTPUT_FILE = "bitmovin_transcoding_report_november.csv"
-ORG_ID = "9fc82499-1646-4474-9aac-2fcfcab55373"
-# ❗ 2. POPRAWNY OKRES: Wrzesień 2025 (od 1 września do północy 1 października)
-# Zgodnie z Pana/Pani prośbą o 01.09.2025 - 30.09.2025
-# Używamy bezpiecznej metody datetime w strefie UTC (timezone.utc)
-START_DATE_OBJ = datetime.datetime(2025, 11, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
-END_DATE_OBJ = datetime.datetime(2025, 12, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+API_KEY = os.getenv("BITMOVIN_API_KEY")
+ORG_ID = os.getenv("BITMOVIN_ORG_ID")
+now_utc = datetime.datetime.now(datetime.timezone.utc)
+curr_month_start = datetime.datetime(now_utc.year, now_utc.month, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+if curr_month_start.month == 1:
+    prev_month_start = datetime.datetime(curr_month_start.year - 1, 12, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+else:
+    prev_month_start = datetime.datetime(curr_month_start.year, curr_month_start.month - 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+START_DATE_OBJ = prev_month_start
+END_DATE_OBJ = curr_month_start
+OUTPUT_FILE = f"bitmovin_transcoding_report_{START_DATE_OBJ.year}-{START_DATE_OBJ.month:02d}.csv"
 
 # =======================================================
 # FUNKCJA POBIERAJĄCA DANE
@@ -193,5 +193,8 @@ if __name__ == "__main__":
         print("Uruchom: python -m pip install requests pandas")
         exit()
 
+    if not API_KEY or not ORG_ID:
+        print("Brak BITMOVIN_API_KEY lub BITMOVIN_ORG_ID w zmiennych środowiskowych.")
+        exit(1)
     encodings = get_bitmovin_encodings()
     process_and_save_data(encodings)
