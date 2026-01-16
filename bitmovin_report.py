@@ -23,7 +23,7 @@ OUTPUT_FILE = f"bitmovin_transcoding_report_{START_DATE_OBJ.year}-{START_DATE_OB
 def get_bitmovin_encodings():
     all_encodings = []
     offset = 0
-    limit = 100
+    limit = 200
 
     # Przekształcenie obiektów daty na format ISO-8601 ze strefą Z (wymagane przez Bitmovin)
     start_date_str = START_DATE_OBJ.isoformat().replace('+00:00', 'Z')
