@@ -51,7 +51,7 @@ FETCH_START, FETCH_END, TARGET_START, TARGET_END = get_date_range(args.year, arg
 def get_bitmovin_encodings():
     all_encodings = []
     offset = 0
-    limit = 200
+    limit = 100
 
     start_date_str = FETCH_START.isoformat().replace('+00:00', 'Z')
     end_date_str = FETCH_END.isoformat().replace('+00:00', 'Z')
