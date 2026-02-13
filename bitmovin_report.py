@@ -26,8 +26,8 @@ def get_date_range(year=None, month=None):
         end_date = datetime.datetime(year, month, last_day, 23, 59, 59, tzinfo=datetime.timezone.utc)
         
         # We also need to look back a bit for tasks created before the month but finished IN the month
-        # Fetch data starting 7 days before the target month to catch stragglers
-        fetch_start = start_date - datetime.timedelta(days=7)
+        # Fetch data starting 14 days before the target month to catch stragglers
+        fetch_start = start_date - datetime.timedelta(days=14)
         fetch_end = end_date + datetime.timedelta(days=1) # Little buffer
         
         return fetch_start, fetch_end, start_date, end_date
