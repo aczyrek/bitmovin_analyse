@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: '0 8 1 * *'
   workflow_dispatch:
+    inputs:
+      year:
+        description: 'Target Year (e.g. 2026)'
+        required: false
+      month:
+        description: 'Target Month (1-12)'
+        required: false
 
 jobs:
   report:
@@ -18,7 +25,12 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install --upgrade pip
       - run: pip install requests pandas
-      - run: python bitmovin_report.py
+      - run: |
+          if [ -n "${{ inputs.year }}" ] && [ -n "${{ inputs.month }}" ]; then
+            python bitmovin_report.py --year ${{ inputs.year }} --month ${{ inputs.month }}
+          else
+            python bitmovin_report.py
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: bitmovin-transcoding-report

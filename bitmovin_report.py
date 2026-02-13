@@ -8,14 +8,42 @@ BASE_URL = "https://api.bitmovin.com/v1/encoding/encodings"
 API_KEY = os.getenv("BITMOVIN_API_KEY")
 ORG_ID = os.getenv("BITMOVIN_ORG_ID")
 
+import argparse
+import sys
+import calendar
+
 # =======================================================
-# KONFIGURACJA OKRESU (AUTOMATYCZNA)
+# KONFIGURACJA OKRESU
 # =======================================================
-# Skrypt pobierze dane z ostatnich 60 dni, aby uwzględnić zadania, 
-# które zaczęły się w jednym miesiącu, a skończyły w drugim.
-now_utc = datetime.datetime.now(datetime.timezone.utc)
-START_DATE_OBJ = now_utc - datetime.timedelta(days=60)
-END_DATE_OBJ = now_utc
+def get_date_range(year=None, month=None):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    
+    if year and month:
+        # User defined month
+        start_date = datetime.datetime(year, month, 1, tzinfo=datetime.timezone.utc)
+        # End of the specified month
+        last_day = calendar.monthrange(year, month)[1]
+        end_date = datetime.datetime(year, month, last_day, 23, 59, 59, tzinfo=datetime.timezone.utc)
+        
+        # We also need to look back a bit for tasks created before the month but finished IN the month
+        # Fetch data starting 7 days before the target month to catch stragglers
+        fetch_start = start_date - datetime.timedelta(days=7)
+        fetch_end = end_date + datetime.timedelta(days=1) # Little buffer
+        
+        return fetch_start, fetch_end, start_date, end_date
+    else:
+        # Default: Last 60 days
+        start_date = now - datetime.timedelta(days=60)
+        end_date = now
+        return start_date, end_date, None, None
+
+# Parse args
+parser = argparse.ArgumentParser()
+parser.add_argument('--year', type=int, help='Target year (e.g. 2026)')
+parser.add_argument('--month', type=int, help='Target month (1-12)')
+args = parser.parse_args()
+
+FETCH_START, FETCH_END, TARGET_START, TARGET_END = get_date_range(args.year, args.month)
 
 # =======================================================
 # FUNKCJA POBIERAJĄCA DANE
@@ -25,8 +53,8 @@ def get_bitmovin_encodings():
     offset = 0
     limit = 200
 
-    start_date_str = START_DATE_OBJ.isoformat().replace('+00:00', 'Z')
-    end_date_str = END_DATE_OBJ.isoformat().replace('+00:00', 'Z')
+    start_date_str = FETCH_START.isoformat().replace('+00:00', 'Z')
+    end_date_str = FETCH_END.isoformat().replace('+00:00', 'Z')
 
     headers = {
         "X-Api-Key": API_KEY,
