@@ -82,8 +82,6 @@ def get_bitmovin_encodings():
                 print(json.dumps(response.json(), indent=4))
             except:
                 print(response.text)
-            except:
-                print(response.text)
             sys.exit(1)
 
         data = response.json()
