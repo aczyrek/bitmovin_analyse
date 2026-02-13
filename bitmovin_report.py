@@ -135,14 +135,16 @@ def process_and_save_data(encodings_data):
     df_clean['Transcoding Type (SD/HD)'] = 'DO UZUPEŁNIENIA'
     df_clean['Kategoria Kosztu'] = 'Transcoding'
 
-    # Grupowanie po miesiącu utworzenia i zapis do osobnych plików
-    df_clean['year_month'] = df_clean['createdAtDT'].dt.strftime('%Y-%m')
+    # Grupowanie po miesiącu ZAKOŃCZENIA (finishedAt) i zapis do osobnych plików
+    # Poprawka: Atrybucja kosztów do miesiąca w którym usługa została wykonana (zakończona)
+    df_clean['finishedAtDT'] = pd.to_datetime(df['finishedAt'])
+    df_clean['year_month'] = df_clean['finishedAtDT'].dt.strftime('%Y-%m')
     
     for ym, group in df_clean.groupby('year_month'):
         filename = f"bitmovin_transcoding_report_{ym}.csv"
         
         # Usuwamy kolumny pomocnicze przed zapisem
-        final_group = group.drop(columns=['createdAtDT', 'year_month'])
+        final_group = group.drop(columns=['createdAtDT', 'finishedAtDT', 'year_month'])
         
         final_group.to_csv(filename, index=False, sep=';', decimal='.')
         
