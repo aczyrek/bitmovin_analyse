@@ -82,7 +82,9 @@ def get_bitmovin_encodings():
                 print(json.dumps(response.json(), indent=4))
             except:
                 print(response.text)
-            return []
+            except:
+                print(response.text)
+            sys.exit(1)
 
         data = response.json()
         if not data.get('data') or not data['data'].get('result'):
@@ -168,7 +170,11 @@ def process_and_save_data(encodings_data):
     df_clean['finishedAtDT'] = pd.to_datetime(df['finishedAt'])
     df_clean['year_month'] = df_clean['finishedAtDT'].dt.strftime('%Y-%m')
     
+    print(f"Dane zgrupowane po miesiącach: {df_clean['year_month'].unique()}")
+    
+    found_any = False
     for ym, group in df_clean.groupby('year_month'):
+        found_any = True
         filename = f"bitmovin_transcoding_report_{ym}.csv"
         
         # Usuwamy kolumny pomocnicze przed zapisem
@@ -177,7 +183,12 @@ def process_and_save_data(encodings_data):
         final_group.to_csv(filename, index=False, sep=';', decimal='.')
         
         units_sum = final_group['Live Units'].dropna().sum()
+        units_sum = final_group['Live Units'].dropna().sum()
         print(f"✅ Zapisano: {filename} ({len(final_group)} zadań, suma Live Units: {units_sum:.2f} min)")
+
+    if not found_any:
+        print("Nie wygenerowano żadnego pliku raportu (brak grup).")
+        sys.exit(1)
 
 # =======================================================
 # URUCHOMIENIE
@@ -185,7 +196,11 @@ def process_and_save_data(encodings_data):
 if __name__ == "__main__":
     if not API_KEY or not ORG_ID:
         print("Brak BITMOVIN_API_KEY lub BITMOVIN_ORG_ID.")
-        exit(1)
+        sys.exit(1)
         
     encodings = get_bitmovin_encodings()
+    if not encodings:
+        print("Brak danych (encodings) dla zadanego okresu.")
+        sys.exit(1)
+
     process_and_save_data(encodings)
