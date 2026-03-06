@@ -157,11 +157,13 @@ def process_and_save_data(encodings_data):
             live_units.append(None)
             live_types.append(None)
 
+    import numpy as np
+    
     df_clean['Live Units'] = pd.to_numeric(pd.Series(live_units))
     
-    # Zaokrąglenie pojedynczych wartości Live Units do najbliższej liczby całkowitej.
-    # Wartości typu 54.3 zostaną zaokrąglone do 54, a 54.6 do 55.
-    df_clean['Live Units'] = df_clean['Live Units'].round()
+    # Platformy billingowe typowo zaokrąglają każdy ułamek zużycia w górę.
+    # Weryfikacja dla wyniku 8031 Units:
+    df_clean['Live Units'] = np.ceil(df_clean['Live Units'])
     
     df_clean['Running Minutes'] = df_clean['Live Units']
     df_clean['Live Type (HD/SD)'] = live_types
