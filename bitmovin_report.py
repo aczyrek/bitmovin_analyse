@@ -157,7 +157,7 @@ def process_and_save_data(encodings_data):
             live_units.append(None)
             live_types.append(None)
 
-    df_clean['Live Units'] = pd.Series(live_units) * 2
+    df_clean['Live Units'] = pd.Series(live_units)
     df_clean['Running Minutes'] = df_clean['Live Units']
     df_clean['Live Type (HD/SD)'] = live_types
     df_clean['Transcoding Type (SD/HD)'] = 'DO UZUPEŁNIENIA'
