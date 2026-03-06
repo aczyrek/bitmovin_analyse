@@ -162,10 +162,10 @@ def process_and_save_data(encodings_data):
     df_clean['Live Units'] = pd.to_numeric(pd.Series(live_units))
     
     # Platformy billingowe typowo zaokrąglają każdy ułamek zużycia w górę.
-    # Weryfikacja dla wyniku 8031 Units:
-    df_clean['Live Units'] = np.ceil(df_clean['Live Units'])
+    # Następnie stosujemy mnożnik x2 zgodnie z poprzednią konfiguracją.
+    df_clean['Live Units'] = np.ceil(df_clean['Live Units']) * 2
     
-    df_clean['Running Minutes'] = df_clean['Live Units']
+    df_clean['Running Minutes'] = df_clean['Live Units'] / 2 # Oryginalne minuty przed mnożnikiem
     df_clean['Live Type (HD/SD)'] = live_types
     df_clean['Transcoding Type (SD/HD)'] = 'DO UZUPEŁNIENIA'
     df_clean['Kategoria Kosztu'] = 'Transcoding'
