@@ -40,6 +40,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bitmovin_transcoding_report_*.csv
+          git add -f bitmovin_transcoding_report_*.csv
           git diff --cached --quiet || git commit -m "chore: add monthly Bitmovin report $(date +'%Y-%m')"
           git push
