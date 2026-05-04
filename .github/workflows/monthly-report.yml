@@ -12,6 +12,9 @@ on:
         description: 'Target Month (1-12)'
         required: false
 
+permissions:
+  contents: write
+
 jobs:
   report:
     runs-on: ubuntu-latest
