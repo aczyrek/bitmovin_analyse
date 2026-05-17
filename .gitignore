@@ -2,3 +2,6 @@ __pycache__/
 *.csv
 .DS_Store
 venv/
+.venv/
+google_credentials.json
+gen-lang-client-*.json
