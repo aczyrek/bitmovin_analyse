@@ -3,5 +3,6 @@ __pycache__/
 .DS_Store
 venv/
 .venv/
+.env
 google_credentials.json
 gen-lang-client-*.json
