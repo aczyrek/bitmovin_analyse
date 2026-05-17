@@ -21,6 +21,7 @@ jobs:
     env:
       BITMOVIN_API_KEY: ${{ secrets.BITMOVIN_API_KEY }}
       BITMOVIN_ORG_ID: ${{ secrets.BITMOVIN_ORG_ID }}
+      GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
