@@ -18,6 +18,12 @@ BASE_URL = "https://api.bitmovin.com/v1/encoding/encodings"
 API_KEY = os.getenv("BITMOVIN_API_KEY")
 ORG_ID = os.getenv("BITMOVIN_ORG_ID")
 
+POLISH_MONTHS = {
+    1: "Styczeń", 2: "Luty", 3: "Marzec", 4: "Kwiecień",
+    5: "Maj", 6: "Czerwiec", 7: "Lipiec", 8: "Sierpień",
+    9: "Wrzesień", 10: "Październik", 11: "Listopad", 12: "Grudzień"
+}
+
 # =======================================================
 # KONFIGURACJA OKRESU
 # =======================================================
@@ -128,7 +134,7 @@ def get_live_encoding_options(encoding_id):
 # =======================================================
 # PRZETWARZANIE I ZAPIS DANYCH
 # =======================================================
-def process_and_save_data(encodings_data):
+def process_and_save_data(encodings_data, year=None, month=None):
     if not encodings_data:
         print("Brak danych do przetworzenia.")
         return []
@@ -172,29 +178,30 @@ def process_and_save_data(encodings_data):
     df_clean['year_month'] = df_clean['finishedAtDT'].dt.strftime('%Y-%m')
     
     print(f"Dane zgrupowane po miesiącach: {df_clean['year_month'].unique()}")
-    
+
+    # Nazwa folderu na Google Drive — jeden folder dla całego raportu
+    now = datetime.datetime.now(datetime.timezone.utc)
+    report_month = month or now.month
+    report_year = year or now.year
+    report_folder_name = f"Report_{POLISH_MONTHS[report_month]}_{report_year}"
+
     generated_reports = []
     for ym, group in df_clean.groupby('year_month'):
-        # Pomijamy puste miesiące (np. jeśli brak wartości year_month)
         if pd.isna(ym):
             continue
-            
+
         filename = f"bitmovin_transcoding_report_{ym}.csv"
-        
-        # Usuwamy kolumny pomocnicze przed zapisem
         final_group = group.drop(columns=['createdAtDT', 'finishedAtDT', 'year_month'])
-        
         final_group.to_csv(filename, index=False, sep=';', decimal='.')
-        
+
         units_sum = final_group['Live Units'].dropna().sum()
         print(f"✅ Zapisano lokalnie: {filename} ({len(final_group)} zadań, suma Live Units: {units_sum:.2f} min)")
-        
-        # Przesyłanie na Google Drive (jeśli poświadczenia są skonfigurowane)
-        has_creds = os.getenv("GOOGLE_CREDENTIALS_JSON") or os.path.exists("google_credentials.json")
+
+        has_creds = os.getenv("GOOGLE_CREDENTIALS_JSON") or os.getenv("GOOGLE_TOKEN_JSON") or os.path.exists("google_credentials.json")
         if has_creds and upload_report_to_google_drive:
             try:
-                print(f"☁️ Przesyłanie raportu {filename} do Google Drive (AFA_Reports -> {ym})...")
-                drive_info = upload_report_to_google_drive(filename, ym)
+                print(f"☁️ Przesyłanie {filename} do Google Drive ({report_folder_name})...")
+                drive_info = upload_report_to_google_drive(filename, ym, report_folder_name=report_folder_name)
                 generated_reports.append({
                     "month": ym,
                     "local_file": filename,
@@ -212,14 +219,14 @@ def process_and_save_data(encodings_data):
                     "error": str(e)
                 })
         else:
-            print("⚠️ Pominięto przesyłanie na Google Drive (brak poświadczeń w zmiennej GOOGLE_CREDENTIALS_JSON lub pliku google_credentials.json).")
+            print("⚠️ Pominięto przesyłanie na Google Drive (brak poświadczeń).")
             generated_reports.append({
                 "month": ym,
                 "local_file": filename,
                 "uploaded": False,
                 "reason": "Brak poświadczeń Google Drive"
             })
-            
+
     return generated_reports
 
 # =======================================================
@@ -243,7 +250,7 @@ def run_report(year=None, month=None):
         print("Brak danych (encodings) dla zadanego okresu.")
         return []
         
-    return process_and_save_data(encodings)
+    return process_and_save_data(encodings, year=year, month=month)
 
 # =======================================================
 # URUCHOMIENIE Z LINII KOMEND (CLI)

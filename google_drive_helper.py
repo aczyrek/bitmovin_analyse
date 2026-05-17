@@ -157,13 +157,14 @@ def upload_file_to_drive(service, local_path, filename, folder_id, convert_to_sh
         raise
 
 
-def upload_report_to_google_drive(local_csv_path, ym):
+def upload_report_to_google_drive(local_csv_path, ym, report_folder_name=None):
     try:
         service = get_drive_service()
 
         root_folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID") or get_or_create_folder(service, "AFA_Reports")
 
-        month_folder_id = get_or_create_folder(service, ym, parent_id=root_folder_id)
+        folder_name = report_folder_name or ym
+        month_folder_id = get_or_create_folder(service, folder_name, parent_id=root_folder_id)
 
         base_filename = os.path.basename(local_csv_path)
         name_without_ext = os.path.splitext(base_filename)[0]
