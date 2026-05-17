@@ -610,6 +610,52 @@ async def run_report_endpoint(
         )
 
 # =======================================================
+# ENDPOINT AUTOMATYCZNY (POPRZEDNI MIESIĄC)
+# =======================================================
+@app.post("/run/auto")
+async def run_auto_endpoint(request: Request):
+    """
+    Automatyczne wyzwolenie raportu za poprzedni miesiąc.
+    Przeznaczony do wywoływania przez Cron Job (np. 1. dnia każdego miesiąca).
+    Chroniony przez nagłówek X-Secret lub parametr secret.
+    """
+    import datetime
+
+    expected_secret = os.getenv("TRIGGER_SECRET")
+    if expected_secret:
+        provided = request.headers.get("X-Secret") or request.query_params.get("secret")
+        if provided != expected_secret:
+            raise HTTPException(status_code=401, detail="Nieautoryzowany dostęp.")
+
+    today = datetime.date.today()
+    prev = (today.replace(day=1) - datetime.timedelta(days=1))
+    year, month = prev.year, prev.month
+
+    try:
+        logger.info(f"Automatyczne wyzwolenie raportu za poprzedni miesiąc: {year}-{month:02d}")
+        results = run_report(year=year, month=month)
+
+        if not results:
+            return JSONResponse(status_code=200, content={
+                "status": "success",
+                "message": f"Brak zakończonych zadań w Bitmovin za {year}-{month:02d}.",
+                "reports": []
+            })
+
+        return {
+            "status": "success",
+            "message": f"Raport za {year}-{month:02d} wygenerowany i przesłany do Google Drive!",
+            "reports": results
+        }
+
+    except ValueError as ve:
+        logger.error(f"Błąd konfiguracji: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Błąd krytyczny /run/auto: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =======================================================
 # START APLIKACJI
 # =======================================================
 if __name__ == "__main__":
