@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.DS_Store
+.env
+*.csv
+google_credentials.json
+oauth_client_secrets.json
+gen-lang-client-*.json
+token.json
+.aws-sam
+samconfig.toml

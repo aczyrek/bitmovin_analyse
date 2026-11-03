@@ -185,12 +185,17 @@ def process_and_save_data(encodings_data, year=None, month=None):
     report_year = year or now.year
     report_folder_name = f"Report_{POLISH_MONTHS[report_month]}_{report_year}"
 
+    # Katalog zapisu CSV. Na AWS Lambda system plików jest read-only poza /tmp,
+    # dlatego ścieżkę można nadpisać zmienną OUTPUT_DIR.
+    output_dir = os.getenv("OUTPUT_DIR", ".")
+    os.makedirs(output_dir, exist_ok=True)
+
     generated_reports = []
     for ym, group in df_clean.groupby('year_month'):
         if pd.isna(ym):
             continue
 
-        filename = f"bitmovin_transcoding_report_{ym}.csv"
+        filename = os.path.join(output_dir, f"bitmovin_transcoding_report_{ym}.csv")
         final_group = group.drop(columns=['createdAtDT', 'finishedAtDT', 'year_month'])
         final_group.to_csv(filename, index=False, sep=';', decimal='.')
 

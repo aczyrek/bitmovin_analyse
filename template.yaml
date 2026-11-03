@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Automatyzacja raportów transkodowania Bitmovin -> Google Drive (AWS Lambda)
+
+Parameters:
+  BitmovinApiKey:
+    Type: String
+    NoEcho: true
+  BitmovinOrgId:
+    Type: String
+    NoEcho: true
+  GoogleTokenJson:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Token OAuth2 uzytkownika (JSON w jednej linii). Wymagany tylko dla prywatnego My Drive.
+  GoogleCredentialsJson:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Service Account JSON w jednej linii. Wystarcza przy zapisie na Shared Drive.
+  GoogleDriveFolderId:
+    Type: String
+    Default: ''
+  TriggerSecret:
+    Type: String
+    NoEcho: true
+    Description: Token chroniący endpointy /run i /run/auto
+  ScheduleExpression:
+    Type: String
+    Default: 'cron(0 6 1 * ? *)'
+    Description: Domyślnie 1. dnia miesiąca o 06:00 (strefa poniżej)
+  ScheduleTimezone:
+    Type: String
+    Default: 'Europe/Warsaw'
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: E-mail powiadamiany o nieudanym raporcie (puste = bez alertów)
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
+
+Globals:
+  Function:
+    Architectures: [arm64]
+    MemorySize: 1536
+    Timeout: 900
+    Environment:
+      Variables:
+        OUTPUT_DIR: /tmp/reports
+        BITMOVIN_API_KEY: !Ref BitmovinApiKey
+        BITMOVIN_ORG_ID: !Ref BitmovinOrgId
+        GOOGLE_TOKEN_JSON: !Ref GoogleTokenJson
+        GOOGLE_CREDENTIALS_JSON: !Ref GoogleCredentialsJson
+        GOOGLE_DRIVE_FOLDER_ID: !Ref GoogleDriveFolderId
+        TRIGGER_SECRET: !Ref TriggerSecret
+
+Resources:
+  # Funkcja HTTP: panel statusu + ręczne wyzwolenie raportu (/run)
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: api
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        Command: ["handler.lambda_handler"]
+      FunctionUrlConfig:
+        AuthType: NONE
+      LoggingConfig:
+        LogGroup: !Ref ApiLogGroup
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/bitmovin-report-api
+      RetentionInDays: 30
+
+  # Funkcja z harmonogramu: raport za poprzedni miesiąc, bez HTTP
+  ScheduledFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: scheduled
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        Command: ["handler.scheduled_report_handler"]
+      LoggingConfig:
+        LogGroup: !Ref ScheduledLogGroup
+      Events:
+        MonthlyReport:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: !Ref ScheduleExpression
+            ScheduleExpressionTimezone: !Ref ScheduleTimezone
+            Input: '{}'
+            RetryPolicy:
+              MaximumRetryAttempts: 2
+
+  ScheduledLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/bitmovin-report-scheduled
+      RetentionInDays: 30
+
+  # Powiadomienia o nieudanym raporcie miesięcznym
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlertEmail
+    Properties:
+      DisplayName: Bitmovin Report Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  FailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlertEmail
+    Properties:
+      AlarmName: bitmovin-report-scheduled-errors
+      AlarmActions:
+        - !Ref AlertTopic
+      AlarmDescription: Miesięczny raport Bitmovin zakończył się błędem
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ScheduledFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  ApiUrl:
+    Description: Publiczny URL panelu (zastępuje adres z Render.com)
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl
+  ScheduledFunctionName:
+    Description: Nazwa funkcji do ręcznego odpalenia (aws lambda invoke)
+    Value: !Ref ScheduledFunction
